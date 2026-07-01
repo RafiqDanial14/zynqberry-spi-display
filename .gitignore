@@ -1,0 +1,57 @@
+# ────────────────────────────────────────────────
+# Vivado generierte temporäre / Ergebnis-Ordner
+# ────────────────────────────────────────────────
+*.cache/
+*.runs/
+*.sim/
+*.hw/
+*.ip_user_files/
+*.srcs/*/ip/*/*_stub.v    # meist überflüssig
+*.srcs/*/ip/*/*_stub.vhdl
+*.srcs/*/ip/*/*_sim_netlist.v
+*.srcs/*/ip/*/*_funcsim.v
+*.srcs/*/ip/*/*_funcsim.*hdl
+*.srcs/*/bd/*/hw_handoff/
+
+# Xilinx temporäre Verzeichnisse
+.Xil/
+ vivado*.*.backup*
+ .Xil*/              # manchmal mit kleinem x
+ .cache/             # doppelt absichern
+ .gen/
+ .debug/
+
+# Logfiles, Reports, Journals (alle Versionen)
+*.jou
+*.log
+*.rpt
+*.str
+*.dmp
+*.vdi
+*.html  # manche Reports sind .html
+*.xml   # Timing Summary usw. meist generiert
+*.txt   # viele kleine Status-Textdateien
+
+# Synthese-/Implementierungs-Outputs
+*.bit
+*.bin
+*.mcs
+*.prm
+*.ltx           # Debug Probes
+*.mmi
+*.unroutes
+*.twr
+*.twx
+*.ut
+*.vm            # manchmal bei netlist exports
+
+# Sonstige temporäre / Editor-Dateien
+*~
+*.bak
+*.old
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

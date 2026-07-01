@@ -1,0 +1,4 @@
+domain_path: D:\Vitis_Projects\zynqberry_hello\platform\zynq_fsbl\zynq_fsbl_bsp
+app_src_dir: D:\Vitis\2024.2\data\embeddedsw\lib\sw_apps\zynq_fsbl
+template: zynq_fsbl
+lang: c
