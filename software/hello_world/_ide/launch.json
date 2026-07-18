@@ -20,9 +20,9 @@
 			"pathMap": [],
 			"targetSetup": {
 				"resetSystem": true,
-				"programDevice": false,
+				"programDevice": true,
 				"resetAPU": false,
-				"bitstreamFile": "D:\\zynqberry_bits\\vivado\\zynqberrydemo.runs\\impl_1\\zsys_wrapper.bit",
+				"bitstreamFile": "D:\\zynqberry_bits\\vivado\\zynqberry_clean\\zynqberry_clean.runs\\impl_1\\zsys_wrapper.bit",
 				"zynqInitialization": {
 					"isFsbl": false,
 					"usingFSBL": {
@@ -33,7 +33,7 @@
 					"usingPs7Init": {
 						"runPs7Init": true,
 						"runPs7PostInit": true,
-						"ps7InitTclFile": "D:\\zynqberry_bits\\vivado_bitbang\\zynqberrydemo.gen\\sources_1\\bd\\zsys\\ip\\zsys_processing_system7_0_0\\ps7_init.tcl"
+						"ps7InitTclFile": "D:\\zynqberry_bits\\vivado\\zynqberry_clean\\zynqberry_clean.gen\\sources_1\\bd\\zsys\\ip\\zsys_processing_system7_0_0\\ps7_init.tcl"
 					}
 				},
 				"downloadElf": [

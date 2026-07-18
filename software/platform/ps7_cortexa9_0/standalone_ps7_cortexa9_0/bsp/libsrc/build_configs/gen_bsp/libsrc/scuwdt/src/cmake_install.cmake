@@ -1,4 +1,4 @@
-# Install script for directory: D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/scuwdt/src
+# Install script for directory: D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/scuwdt/src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

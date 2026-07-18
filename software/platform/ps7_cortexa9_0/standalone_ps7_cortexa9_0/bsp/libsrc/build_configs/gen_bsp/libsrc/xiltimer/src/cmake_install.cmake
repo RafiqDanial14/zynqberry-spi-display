@@ -1,4 +1,4 @@
-# Install script for directory: D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/xiltimer/src
+# Install script for directory: D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/xiltimer/src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -39,31 +39,31 @@ endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   list(APPEND CMAKE_ABSOLUTE_DESTINATION_FILES
-   "D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/lib/libxiltimer.a")
+   "D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/lib/libxiltimer.a")
   if(CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(WARNING "ABSOLUTE path INSTALL DESTINATION : ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
   if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
-  file(INSTALL DESTINATION "D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/lib" TYPE STATIC_LIBRARY MESSAGE_LAZY FILES "D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/xiltimer/src/libxiltimer.a")
+  file(INSTALL DESTINATION "D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/lib" TYPE STATIC_LIBRARY MESSAGE_LAZY FILES "D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/xiltimer/src/libxiltimer.a")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   list(APPEND CMAKE_ABSOLUTE_DESTINATION_FILES
-   "D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/include/../include")
+   "D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/include/../include")
   if(CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(WARNING "ABSOLUTE path INSTALL DESTINATION : ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
   if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
-  file(INSTALL DESTINATION "D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/include/.." TYPE DIRECTORY MESSAGE_LAZY FILES "D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/include")
+  file(INSTALL DESTINATION "D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/include/.." TYPE DIRECTORY MESSAGE_LAZY FILES "D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/include")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/xiltimer/src/core/cmake_install.cmake")
+  include("D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/xiltimer/src/core/cmake_install.cmake")
 
 endif()
 

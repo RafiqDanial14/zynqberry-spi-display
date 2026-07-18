@@ -1,4 +1,4 @@
-# Install script for directory: D:/Vitis_Projects/zynqberry_hello/platform/zynq_fsbl/zynq_fsbl_bsp/libsrc/scuwdt/src
+# Install script for directory: D:/Vitis_Projects/zynqberry_hello/software/platform/zynq_fsbl/zynq_fsbl_bsp/libsrc/scuwdt/src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

@@ -1,4 +1,4 @@
-# Install script for directory: D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/standalone/src/arm
+# Install script for directory: D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/standalone/src/arm
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -39,11 +39,11 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/standalone/src/arm/common/cmake_install.cmake")
+  include("D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/standalone/src/arm/common/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/standalone/src/arm/cortexa9/cmake_install.cmake")
+  include("D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/standalone/src/arm/cortexa9/cmake_install.cmake")
 endif()
 

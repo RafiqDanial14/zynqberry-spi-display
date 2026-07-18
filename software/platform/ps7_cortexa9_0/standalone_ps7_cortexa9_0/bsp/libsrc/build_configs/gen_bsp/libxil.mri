@@ -1,18 +1,18 @@
 create libxil.a
-addlib D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/xadcps/src/libxadcps.a
-addlib D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/wdtps/src/libwdtps.a
-addlib D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/usbps/src/libusbps.a
-addlib D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/uartps/src/libuartps.a
-addlib D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/spips/src/libspips.a
-addlib D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/sdps/src/libsdps.a
-addlib D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/scuwdt/src/libscuwdt.a
-addlib D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/scutimer/src/libscutimer.a
-addlib D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/scugic/src/libscugic.a
-addlib D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/qspips/src/libqspips.a
-addlib D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/iicps/src/libiicps.a
-addlib D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/gpiops/src/libgpiops.a
-addlib D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/dmaps/src/libdmaps.a
-addlib D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/devcfg/src/libdevcfg.a
-addlib D:/Vitis_Projects/zynqberry_hello/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/coresightps_dcc/src/libcoresightps_dcc.a
+addlib D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/xadcps/src/libxadcps.a
+addlib D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/wdtps/src/libwdtps.a
+addlib D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/usbps/src/libusbps.a
+addlib D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/uartps/src/libuartps.a
+addlib D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/spips/src/libspips.a
+addlib D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/sdps/src/libsdps.a
+addlib D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/scuwdt/src/libscuwdt.a
+addlib D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/scutimer/src/libscutimer.a
+addlib D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/scugic/src/libscugic.a
+addlib D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/qspips/src/libqspips.a
+addlib D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/iicps/src/libiicps.a
+addlib D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/gpiops/src/libgpiops.a
+addlib D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/dmaps/src/libdmaps.a
+addlib D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/devcfg/src/libdevcfg.a
+addlib D:/Vitis_Projects/zynqberry_hello/software/platform/ps7_cortexa9_0/standalone_ps7_cortexa9_0/bsp/libsrc/build_configs/gen_bsp/libsrc/coresightps_dcc/src/libcoresightps_dcc.a
 save
 end
