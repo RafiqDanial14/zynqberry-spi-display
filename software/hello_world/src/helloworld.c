@@ -6,6 +6,11 @@
 #include "sleep.h"
 #include <stdint.h>
 
+
+#include <stddef.h>    // NULL
+
+#include "lvgl/lvgl.h"   // lvgl folder sits next to this file
+
 // hardware 
 #define SPI_BASE XPAR_XSPIPS_0_BASEADDR
 #define GPIO_BASE  XPAR_XGPIOPS_0_BASEADDR
