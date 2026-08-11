@@ -4,8 +4,8 @@
 // sources: lvgl porting docs, UG585 (CR p.562, ER p.583), ili9488 datasheet
 //
 // !! just copying the lvgl folder into src is NOT enough, cmake doesnt
-// build it. had to put it in UserConfig.cmake otherwise the linker doesnt
-// find lv_init and all the rest. cost me an evening
+// build it. had to put it in CMakeLists.txt otherwise the linker doesnt
+// find lv_init and all the rest. 
 
 #include "xgpiops.h"
 #include "xparameters.h"
@@ -451,11 +451,32 @@ int main(void)
                            LV_DISPLAY_RENDER_MODE_PARTIAL);
     xil_printf("lvgl display ready\r\n");
 
-    // one label just to see that the flush path works.
-    // not a widget demo, that comes in M5
-    lv_obj_t *label = lv_label_create(lv_screen_active());
-    lv_label_set_text(label, "LVGL laeuft - M4");
-    lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
+    // simple screen, just so you can see lvgl really renders through
+    // my flush callback. widgets + touch come in M5
+
+    // dark background, default is white and looks unfinished
+    lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x101828), 0);
+
+    lv_obj_t *title = lv_label_create(lv_screen_active());
+    lv_label_set_text(title, "M4 - LVGL v9 Port");
+    lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_align(title, LV_ALIGN_CENTER, 0, -40);
+
+    lv_obj_t *name = lv_label_create(lv_screen_active());
+    lv_label_set_text(name, "Rafiq Danial Bin Rajman");
+    lv_obj_set_style_text_color(name, lv_color_hex(0x33CCFF), 0);
+    lv_obj_align(name, LV_ALIGN_CENTER, 0, -10);
+
+    lv_obj_t *matnr = lv_label_create(lv_screen_active());
+    lv_label_set_text(matnr, "Matrikelnummer 893273");
+    lv_obj_set_style_text_color(matnr, lv_color_hex(0x33CCFF), 0);
+    lv_obj_align(matnr, LV_ALIGN_CENTER, 0, 15);
+
+    // hardware at the bottom, also to see if smaller text works
+    lv_obj_t *info = lv_label_create(lv_screen_active());
+    lv_label_set_text(info, "ILI9488 SPI - ZynqBerry TE0726");
+    lv_obj_set_style_text_color(info, lv_color_hex(0x888888), 0);
+    lv_obj_align(info, LV_ALIGN_BOTTOM_MID, 0, -20);
 
     xil_printf("entering lvgl loop\r\n");
 
