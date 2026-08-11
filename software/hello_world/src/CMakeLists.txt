@@ -19,6 +19,40 @@ collect(PROJECT_LIB_DEPS xilstandalone;xiltimer)
 
 
 
+# ---- LVGL ----
+# compile the lvgl library sources together with the application
+file(GLOB_RECURSE LVGL_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/lvgl/src/*.c)
+add_library(lvgl STATIC ${LVGL_SOURCES})
+target_include_directories(lvgl PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+collect(PROJECT_LIB_DEPS lvgl)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
