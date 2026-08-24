@@ -424,6 +424,12 @@ static uint32_t my_tick_cb(void)
     return tick_ms;
 }
 
+// draw buffer, 40 lines. partial mode = lvgl renders in stripes that
+// size. bigger would be fewer flush calls but more ram, full screen
+// would be 320*480*2 = 300kb
+#define BUF_LINES 40
+static uint8_t draw_buf[LCD_W * BUF_LINES * 2];
+
 // main
 
 int main(void)
