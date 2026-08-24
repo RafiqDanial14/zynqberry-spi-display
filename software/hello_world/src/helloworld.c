@@ -413,6 +413,17 @@ static void my_flush_cb(lv_display_t *disp, const lv_area_t *area,
                                     // only see the first stripe
 }
 
+// tick, lvgl wants to know how many ms passed
+// normally you use xtime_l.h for this but thats not in my bsp so i
+// count myself. loop sleeps 5ms so +5 per round. runs a bit slow
+// because the loop itself takes time too but for animations its fine
+static uint32_t tick_ms = 0;
+
+static uint32_t my_tick_cb(void)
+{
+    return tick_ms;
+}
+
 // main
 
 int main(void)
