@@ -434,50 +434,36 @@ static uint8_t draw_buf[LCD_W * BUF_LINES * 2];
 
 int main(void)
 {
-    xil_printf("\r\n M3 test card - Rafiq Danial Bin Rajman 893273 \r\n");
+    xil_printf("\r\n M4 LVGL port - Rafiq Danial Bin Rajman 893273 \r\n");
 
     if (lcd_init() != XST_SUCCESS) {
         xil_printf("init failed\r\n");
         return -1;
     }
 
-    xil_printf("background\r\n");
-    fill_screen(BLACK);
+    // start lvgl. order matters, lv_init has to be first
+    lv_init();
+    lv_tick_set_cb(my_tick_cb);
 
-    // checklist 1: whole display area. border sits on the outermost pixels 0,0 to 319,479 - if an edge line is missing or cut off something is wrong with the drawing area
-    xil_printf("border\r\n");
-    rect_outline(0, 0, LCD_W, LCD_H, CYAN);
+    lv_display_t *disp = lv_display_create(LCD_W, LCD_H);
+    lv_display_set_flush_cb(disp, my_flush_cb);
+    lv_display_set_buffers(disp, draw_buf, NULL, sizeof(draw_buf),
+                           LV_DISPLAY_RENDER_MODE_PARTIAL);
+    xil_printf("lvgl display ready\r\n");
 
-    // checklist 2: orientation. label must show up top left,
-    // anywhere else means madctl (0x36) is wrong
-    xil_printf("origin label\r\n");
-    draw_text(6, 6, "0,0", RED, BLACK, 1);
+    // one label just to see that the flush path works.
+    // not a widget demo, that comes in M5
+    lv_obj_t *label = lv_label_create(lv_screen_active());
+    lv_label_set_text(label, "LVGL laeuft - M4");
+    lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
 
-    // checklist 3: center. diagonals corner to corner cross exactly in the middle, cross + circles sit at computed center 160,240 
-     
-    xil_printf("diagonals\r\n");
-    draw_line(0, 0, LCD_W-1, LCD_H-1, MAGENTA);
-    draw_line(LCD_W-1, 0, 0, LCD_H-1, MAGENTA);
+    xil_printf("entering lvgl loop\r\n");
 
-    // line fan from the first demo version, dont need it here anymore
-    // because the diagonals already show the lines work
-    //for (int i = 0; i < 8; i++)
-    //    draw_line(20, 460, 40 + i*35, 150, MAGENTA);
-
-    xil_printf("center\r\n");
-    fill_rect(120, 200, 81, 81, BLACK); // calm zone so the cross is visible
-    fill_rect(140, 240, 41, 1, WHITE); // cross
-    fill_rect(160, 220, 1, 41, WHITE);
-    draw_circle(160, 240, 60, RED);  //for the circle
-    draw_circle(160, 240, 45, YELLOW);
-    draw_circle(160, 240, 30, GREEN);
-
-    // name at the bottom part of screen
-    xil_printf("text\r\n");
-    draw_text(30, 380, "RAFIQ DANIAL BIN RAJMAN", WHITE, BLACK, 2);
-    draw_text(30, 405, "893273  M3", YELLOW, BLACK, 2);
-
-    xil_printf("done\r\n");
-    while (1) {}
+    // lvgl has to run regularly, docs say every few ms
+    while (1) {
+        lv_timer_handler();
+        usleep(5000);
+        tick_ms += 5;   // see above
+    }
     return 0;
 }
