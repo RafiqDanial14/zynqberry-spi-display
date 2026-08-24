@@ -1,12 +1,17 @@
-// M3 Minimalgrafik - Rafiq Danial Bin Rajman, 893273 
+// M4 LVGL Port - Rafiq Danial Bin Rajman, 893273
+// lvgl v9 in, flush callback + tick. driver is still the M3 one
+// made with AI help (Claude), marked [AI] where it helped most
+// sources: lvgl porting docs, UG585 (CR p.562, ER p.583), ili9488 datasheet
+//
+// !! just copying the lvgl folder into src is NOT enough, cmake doesnt
+// build it. had to put it in UserConfig.cmake otherwise the linker doesnt
+// find lv_init and all the rest. cost me an evening
 
 #include "xgpiops.h"
 #include "xparameters.h"
 #include "xil_printf.h"
 #include "sleep.h"
 #include <stdint.h>
-
-
 #include <stddef.h>    // NULL
 
 #include "lvgl/lvgl.h"   // lvgl folder sits next to this file
@@ -380,6 +385,32 @@ static void draw_text(int x, int y, const char *s, uint16_t c, uint16_t bg, int 
         x += 6*scale;   // 5 wide + 1 gap
         s++;
     }
+}
+// main
+
+// flush callback. lvgl gives me a finished rectangle and i just push
+// it through my window+pixel path from M3
+// px_map is rgb565 so 2 bytes per pixel
+static void my_flush_cb(lv_display_t *disp, const lv_area_t *area,
+                        uint8_t *px_map)
+{
+    uint16_t *p = (uint16_t *)px_map;
+
+    open_window((uint16_t)area->x1, (uint16_t)area->y1,
+                (uint16_t)area->x2, (uint16_t)area->y2);
+
+    int32_t w = area->x2 - area->x1 + 1;
+    int32_t h = area->y2 - area->y1 + 1;
+    for (int32_t i = 0; i < w * h; i++) {
+        uint16_t c = *p++;
+        spi_send((c & 0xF800) >> 8);
+        spi_send((c & 0x07E0) >> 3);
+        spi_send((c & 0x001F) << 3);
+    }
+    close_window();
+
+    lv_display_flush_ready(disp);   // without this lvgl waits forever and you
+                                    // only see the first stripe
 }
 
 // main
