@@ -1,11 +1,11 @@
 // M4 LVGL Port - Rafiq Danial Bin Rajman, 893273
 // lvgl v9 in, flush callback + tick. driver is still the M3 one
+// the M3 drawing functions are in m3_graphics.c now, not in this file
 // made with AI help (Claude), marked [AI] where it helped most
-// sources: lvgl porting docs, UG585 (CR p.562, ER p.583), ili9488 datasheet
+// Source : LVGL porting docs, UG585 (CR p.562, ER p.583), ili9488 datasheet
 //
 // !! just copying the lvgl folder into src is NOT enough, cmake doesnt
-// build it. had to put it in CMakeLists.txt otherwise the linker doesnt
-// find lv_init and all the rest. 
+// build it. had to put it in CMakeLists.txt otherwise the linker doesnt find lv_init and all the rest.
 
 #include "xgpiops.h"
 #include "xparameters.h"
@@ -16,13 +16,14 @@
 
 #include "lvgl/lvgl.h"   // lvgl folder sits next to this file
 
+#include "display_driver.h"   // sizes, colors, window functions
+#include "m3_graphics.h"      // M3 drawing, not used anymore but still in the project
+
 // hardware 
 #define SPI_BASE XPAR_XSPIPS_0_BASEADDR
 #define GPIO_BASE  XPAR_XGPIOPS_0_BASEADDR
 #define PIN_DC 54u   // emio gpio 54 -> K11 -> header 18
 #define PIN_RST  55u  // 55 -> K13 -> header 22
-#define LCD_W  320
-#define LCD_H 480
 
 // spi registers, offsets from UG585
 #define R_CR   0x00   // config page 562 
@@ -44,17 +45,6 @@
 
 #define SR_TXFULL   (1u << 3)
 #define SR_RXAVAIL  (1u << 4)
-
-// colors of the RGB565
-#define BLACK    0x0000u
-#define WHITE    0xFFFFu
-#define RED      0xF800u
-#define GREEN    0x07E0u
-#define BLUE     0x001Fu
-#define YELLOW   0xFFE0u
-#define CYAN     0x07FFu
-#define MAGENTA  0xF81Fu
-#define ORANGE   0xFD20u  
 
 static XGpioPs gpio;
 
@@ -174,7 +164,7 @@ static int lcd_init(void)
 
 // opens the paint window. after this cs stays selected and dc stays on data so pixels can be pushed directly with spi_send
 // dont forget close_window at the end
-static void open_window(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
+void open_window(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
 {
     write_command(0x2A);   // columns from-to
     write_data(x0 >> 8); write_data(x0 & 0xFF);
@@ -186,211 +176,29 @@ static void open_window(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
     cs_select();
     XGpioPs_WritePin(&gpio, PIN_DC, 1);   // pixels are data
 }
-static void close_window(void)
+void close_window(void)
 {
     cs_release();
 }
 
 // RGB565 -> only 3 bytes because the ili9488 over spi only takes 18 bit
-static void pixel_out(uint16_t c)
+void pixel_out(uint16_t c)
 {
-    spi_send((c & 0xF800) >> 8);
-    spi_send((c & 0x07E0) >> 3);
-    spi_send((c & 0x001F) << 3);
+    spi_send((c & 0xF800) >> 8);  //red
+    spi_send((c & 0x07E0) >> 3);  //green
+    spi_send((c & 0x001F) << 3);  //blue
 }
 
-// basic drawing 
-
-static void fill_rect(int x, int y, int w, int h, uint16_t c)
-{
-    if (w <= 0 || h <= 0) return;
-    open_window((uint16_t)x, (uint16_t)y,
-                (uint16_t)(x+w-1), (uint16_t)(y+h-1));
-    for (long i = 0; i < (long)w*h; i++)
-        pixel_out(c);
-    close_window();
-}
-
-static void fill_screen(uint16_t c)
-{
-    fill_rect(0, 0, LCD_W, LCD_H, c);
-}
-
-static void put_pixel(int x, int y, uint16_t c)
-{
-    if (x < 0 || y < 0 || x >= LCD_W || y >= LCD_H) return;
-    fill_rect(x, y, 1, 1, c);   // pixel = 1x1 rect
-}
-
-// outline = 4 thin rects
-static void rect_outline(int x, int y, int w, int h, uint16_t c)
-{
-    fill_rect(x, y, w, 1, c);       // top side
-    fill_rect(x, y+h-1, w, 1, c);   // bottom side
-    fill_rect(x, y, 1, h, c);
-    fill_rect(x+w-1, y, 1, h, c);
-}
-
-// M3: lines
-
-// bresenham like in the lecture, two cases: flat (x drives) and
-// steep (y drives). d tells when the slow axis has to step.
-// [AI] built with AI help from the lecture/wikipedia pseudocode,
-// checked the flat case on paper for (0,0) to (6,3)
-static void line_flat(int x0, int y0, int x1, int y1, uint16_t c)
-{
-    int dx = x1 - x0;
-    int dy = y1 - y0;
-    int ystep = 1;
-    if (dy < 0) { ystep = -1; dy = -dy; }
-    int d = 2*dy - dx;
-    int y = y0;
-    for (int x = x0; x <= x1; x++) {
-        put_pixel(x, y, c);
-        if (d > 0) {
-            y += ystep;
-            d -= 2*dx;
-        }
-        d += 2*dy;
-    }
-}
-static void line_steep(int x0, int y0, int x1, int y1, uint16_t c)
-{
-    int dx = x1 - x0;
-    int dy = y1 - y0;
-    int xstep = 1;
-    if (dx < 0) { xstep = -1; dx = -dx; }
-    int d = 2*dx - dy;
-    int x = x0;
-    for (int y = y0; y <= y1; y++) {
-        put_pixel(x, y, c);
-        if (d > 0) {
-            x += xstep;
-            d -= 2*dy;
-        }
-        d += 2*dx;
-    }
-}
-static void draw_line(int x0, int y0, int x1, int y1, uint16_t c)
-{
-    int adx = (x1 > x0) ? x1-x0 : x0-x1;
-    int ady = (y1 > y0) ? y1-y0 : y0-y1;
-    if (adx >= ady) {
-        // flat: walk left to right
-        if (x0 > x1) line_flat(x1, y1, x0, y0, c);
-        else         line_flat(x0, y0, x1, y1, c);
-    } else {
-        // steep: walk top to bottom
-        if (y0 > y1) line_steep(x1, y1, x0, y0, c);
-        else         line_steep(x0, y0, x1, y1, c);
-    }
-}
-
-// M3: circle
-
-// midpoint circle, textbook version, start at top (0,r), d = 3-2r.
-// every point mirrored into all 8 octants, circle is 8x symmetric.
-// [AI] d update rules from the textbook algorithm
-static void draw_circle(int cx, int cy, int r, uint16_t c)
-{
-    int x = 0;
-    int y = r;
-    int d = 3 - 2*r;
-    while (x <= y) {
-        put_pixel(cx + x, cy + y, c);
-        put_pixel(cx - x, cy + y, c);
-        put_pixel(cx + x, cy - y, c);
-        put_pixel(cx - x, cy - y, c);
-        put_pixel(cx + y, cy + x, c);
-        put_pixel(cx - y, cy + x, c);
-        put_pixel(cx + y, cy - x, c);
-        put_pixel(cx - y, cy - x, c);
-        if (d < 0) {
-            d += 4*x + 6;
-        } else {
-            d += 4*(x - y) + 10;
-            y--;
-        }
-        x++;
-    }
-}
-
-// M3: text
-
-// [AI] for the help for the list. font 5x7: 5 bytes per char, 1 byte = 1 column, bit0 = top row.
-// lookup over the string: position in string = position in table.
-// IMPORTANT: string and table must be in the same order or you get
-// wrong letters. only the chars i need, rest comes when needed
-static const char font_chars[] = "RAFIQDNL 0123456789,MESTBJ";
-static const uint8_t font_data[][5] = {
-    {0x7F,0x09,0x19,0x29,0x46},   // R
-    {0x7E,0x11,0x11,0x11,0x7E},   // A
-    {0x7F,0x09,0x09,0x09,0x01},   // F
-    {0x00,0x41,0x7F,0x41,0x00},   // I
-    {0x3E,0x41,0x51,0x21,0x5E},   // Q
-    {0x7F,0x41,0x41,0x41,0x3E},   // D
-    {0x7F,0x04,0x08,0x10,0x7F},   // N
-    {0x7F,0x40,0x40,0x40,0x40},   // L
-    {0x00,0x00,0x00,0x00,0x00},   // space
-    {0x3E,0x51,0x49,0x45,0x3E},   // 0
-    {0x00,0x42,0x7F,0x40,0x00},   // 1
-    {0x42,0x61,0x51,0x49,0x46},   // 2
-    {0x21,0x41,0x45,0x4B,0x31},   // 3
-    {0x18,0x14,0x12,0x7F,0x10},   // 4
-    {0x27,0x45,0x45,0x45,0x39},   // 5
-    {0x3C,0x4A,0x49,0x49,0x30},   // 6
-    {0x01,0x71,0x09,0x05,0x03},   // 7
-    {0x36,0x49,0x49,0x49,0x36},   // 8
-    {0x06,0x49,0x49,0x29,0x1E},   // 9
-    {0x00,0x60,0x60,0x00,0x00},   // ,
-    {0x7F,0x02,0x0C,0x02,0x7F},   // M
-    {0x7F,0x49,0x49,0x49,0x41},   // E
-    {0x46,0x49,0x49,0x49,0x31},   // S
-    {0x01,0x01,0x7F,0x01,0x01},   // T
-    {0x7F,0x49,0x49,0x49,0x36},   // B 
-    {0x20,0x40,0x41,0x3F,0x01},   // J
-};
-
-static int font_index(char ch) {
-    for (int i = 0; font_chars[i] != 0; i++)
-        if (font_chars[i] == ch) return i;
-    return -1;  // dont have it, skip
-}
-
-// scaling: every font dot becomes a scale x scale block, letter
-// gets stamped out of little squares.
-// [AI] helped check my font bytes against grid paper
-static void draw_char(int x, int y, char ch, uint16_t c, uint16_t bg, int scale)
-{
-    int idx = font_index(ch);
-    if (idx < 0) return;   // dont know it, skip
-
-    // fill the whole cell with background first, otherwise old pixels show through inside the letter
-    
-    fill_rect(x, y, 5*scale, 7*scale, bg);
-
-    for (int col = 0; col < 5; col++) {
-        uint8_t bits = font_data[idx][col];
-        for (int row = 0; row < 7; row++) {
-            if ((bits >> row) & 1)
-                fill_rect(x + col*scale, y + row*scale, scale, scale, c);
-        }
-    }
-}
-
-static void draw_text(int x, int y, const char *s, uint16_t c, uint16_t bg, int scale)
-{
-    while (*s) {
-        draw_char(x, y, *s, c, bg, scale);
-        x += 6*scale;   // 5 wide + 1 gap
-        s++;
-    }
-}
 // main
 
-// flush callback. lvgl gives me a finished rectangle and i just push
-// it through my window+pixel path from M3
+// counts every flushed stripe, just so i have something live on the screen
+static uint32_t frame_count = 0;
+
+// flush callback. lvgl gives me a finished rectangle and i just push it through my window+pixel path from M3
 // px_map is rgb565 so 2 bytes per pixel
+// [AI] the callback signature and the lvgl calls (lv_display_flush_ready)
+// came with AI help, id never used lvgl before. the open_window /
+// spi_send / close_window part inside is my own M3 code
 static void my_flush_cb(lv_display_t *disp, const lv_area_t *area,
                         uint8_t *px_map)
 {
@@ -409,13 +217,17 @@ static void my_flush_cb(lv_display_t *disp, const lv_area_t *area,
     }
     close_window();
 
+    frame_count++;   // for the display, counts every flushed stripe
+
     lv_display_flush_ready(disp);   // without this lvgl waits forever and you
                                     // only see the first stripe
 }
 
 // tick, lvgl wants to know how many ms passed
-// normally you use xtime_l.h for this but thats not in my bsp so i
-// count myself. loop sleeps 5ms so +5 per round. runs a bit slow
+// [AI] that lvgl needs a tick callback at all and how to register it
+// it came from the lvgl documents with AI help
+// normally use xtime_l.h for this but thats not in my bsp so i count myself
+//  loop sleeps 5ms so +5 per round. runs a bit slow
 // because the loop itself takes time too but for animations its fine
 static uint32_t tick_ms = 0;
 
@@ -424,17 +236,54 @@ static uint32_t my_tick_cb(void)
     return tick_ms;
 }
 
-// draw buffer, 40 lines. partial mode = lvgl renders in stripes that
-// size. bigger would be fewer flush calls but more ram, full screen
+// [AI] partial render mode and how to size the buffer worked out with
+// AI help, the 40 lines are my own choice after looking at the ram
+// draw buffer, 40 lines. partial mode = lvgl renders in stripes that size.
+// bigger would be fewer flush calls but more ram, full screen
 // would be 320*480*2 = 300kb
 #define BUF_LINES 40
 static uint8_t draw_buf[LCD_W * BUF_LINES * 2];
 
 // main
 
+// LIVE VALUES on the screen 
+// idea: instead of just my name standing there i show numbers that
+// actually change while it runs. uptime and frame count show that the
+// loop is alive, the memory bar shows how much of lvgls pool is used.
+// the memory part is also useful for the performance analysis later
+
+static lv_obj_t *lbl_uptime;
+static lv_obj_t *lbl_frames;
+static lv_obj_t *lbl_mem;
+static lv_obj_t *bar_mem;
+
+// gets called by lvgl once a second, updates the labels
+// [AI] lv_timer_create and lv_mem_monitor usage with AI help,the uptime maths and which values to show are mine
+static void update_values(lv_timer_t *t)
+{
+    (void)t;
+
+    // uptime from my tick counter, /1000 = seconds
+    uint32_t secs = tick_ms / 1000;
+    lv_label_set_text_fmt(lbl_uptime, "Uptime    %02d:%02d:%02d",
+                          (int)(secs / 3600),
+                          (int)((secs / 60) % 60),
+                          (int)(secs % 60));
+
+    lv_label_set_text_fmt(lbl_frames, "Frames    %d", (int)frame_count);
+
+    // how much of the lvgl memory pool is in use
+    lv_mem_monitor_t mon;
+    lv_mem_monitor(&mon);
+    lv_label_set_text_fmt(lbl_mem, "LVGL Mem  %d %%", (int)mon.used_pct);
+    lv_bar_set_value(bar_mem, (int32_t)mon.used_pct, LV_ANIM_OFF);
+}
+
+// main
+
 int main(void)
 {
-    xil_printf("\r\n M4 LVGL port - Rafiq Danial Bin Rajman 893273 \r\n");
+    xil_printf("\r\n M4 LVGL monitor - Rafiq Danial Bin Rajman 893273 \r\n");
 
     if (lcd_init() != XST_SUCCESS) {
         xil_printf("init failed\r\n");
@@ -442,6 +291,7 @@ int main(void)
     }
 
     // start lvgl. order matters, lv_init has to be first
+    // [AI] the order of these calls and the function names come from the lvgl porting docs with AI help
     lv_init();
     lv_tick_set_cb(my_tick_cb);
 
@@ -451,36 +301,55 @@ int main(void)
                            LV_DISPLAY_RENDER_MODE_PARTIAL);
     xil_printf("lvgl display ready\r\n");
 
-    // simple screen, just so you can see lvgl really renders through
-    // my flush callback. widgets + touch come in M5
-
     // dark background, default is white and looks unfinished
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x101828), 0);
 
-    lv_obj_t *title = lv_label_create(lv_screen_active());
-    lv_label_set_text(title, "M4 - LVGL v9 Port");
+    // [AI] the lvgl widget calls (label_create, obj_align, style_text_color,bar_create) came with AI help, the layout and what to display is mine 
+    lv_obj_t *title = lv_label_create(lv_screen_active());  //set title text
+    lv_label_set_text(title, "ZynqBerry LVGL Monitor");
     lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_align(title, LV_ALIGN_CENTER, 0, -40);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 25);
+
+    // the three live values. text gets filled in by update_values,just a placeholder until the first update
+    lbl_uptime = lv_label_create(lv_screen_active());
+    lv_label_set_text(lbl_uptime, "Uptime    00:00:00");
+    lv_obj_set_style_text_color(lbl_uptime, lv_color_hex(0x33CCFF), 0);
+    lv_obj_align(lbl_uptime, LV_ALIGN_CENTER, 0, -70);
+
+    lbl_frames = lv_label_create(lv_screen_active());
+    lv_label_set_text(lbl_frames, "Frames    0");
+    lv_obj_set_style_text_color(lbl_frames, lv_color_hex(0x33CCFF), 0);
+    lv_obj_align(lbl_frames, LV_ALIGN_CENTER, 0, -45);
+
+    lbl_mem = lv_label_create(lv_screen_active());
+    lv_label_set_text(lbl_mem, "LVGL Mem  0 %");
+    lv_obj_set_style_text_color(lbl_mem, lv_color_hex(0x33CCFF), 0);
+    lv_obj_align(lbl_mem, LV_ALIGN_CENTER, 0, -20);
+
+    // bar for the memory, 0-100
+    bar_mem = lv_bar_create(lv_screen_active());
+    lv_obj_set_size(bar_mem, 240, 20);
+    lv_obj_align(bar_mem, LV_ALIGN_CENTER, 0, 15);
+    lv_bar_set_range(bar_mem, 0, 100);
+    lv_bar_set_value(bar_mem, 0, LV_ANIM_OFF);
 
     lv_obj_t *name = lv_label_create(lv_screen_active());
     lv_label_set_text(name, "Rafiq Danial Bin Rajman");
-    lv_obj_set_style_text_color(name, lv_color_hex(0x33CCFF), 0);
-    lv_obj_align(name, LV_ALIGN_CENTER, 0, -10);
+    lv_obj_set_style_text_color(name, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_align(name, LV_ALIGN_BOTTOM_MID, 0, -45);
 
     lv_obj_t *matnr = lv_label_create(lv_screen_active());
     lv_label_set_text(matnr, "Matrikelnummer 893273");
-    lv_obj_set_style_text_color(matnr, lv_color_hex(0x33CCFF), 0);
-    lv_obj_align(matnr, LV_ALIGN_CENTER, 0, 15);
+    lv_obj_set_style_text_color(matnr, lv_color_hex(0x888888), 0);
+    lv_obj_align(matnr, LV_ALIGN_BOTTOM_MID, 0, -22);
 
-    // hardware at the bottom, also to see if smaller text works
-    lv_obj_t *info = lv_label_create(lv_screen_active());
-    lv_label_set_text(info, "ILI9488 SPI - ZynqBerry TE0726");
-    lv_obj_set_style_text_color(info, lv_color_hex(0x888888), 0);
-    lv_obj_align(info, LV_ALIGN_BOTTOM_MID, 0, -20);
+    // lvgl timer, calls update_values once a second. handy because i dont have to count that myself in the loop
+    
+    lv_timer_create(update_values, 1000, NULL);
 
     xil_printf("entering lvgl loop\r\n");
 
-    // lvgl has to run regularly, docs say every few ms
+    // lvgl has to run regularly, from the documents say every few ms
     while (1) {
         lv_timer_handler();
         usleep(5000);
