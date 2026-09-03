@@ -1,9 +1,24 @@
-// M5 Touch-Versuch - Rafiq Danial Bin Rajman, 893273
+// M5 Touch - Rafiq Danial Bin Rajman, 893273
 // lvgl v9 in, flush callback + tick. driver is still the M3 one
 // the M3 drawing functions are in m3_graphics.c now, not in this file
-// M5: reading the touch chip over SS1. doesnt answer at the moment,
-// see the comment at touch_read_raw
-// made with AI help (Claude), marked [AI] where it helped most
+//
+// M5: touch on SS1, working now. the reason it did not work for so long
+// was NOT in this file, it was in the block design: SPI0_SS_I was left
+// unconnected. that is the only slave select INPUT the PS SPI has and it
+// belongs to SS0. mode fail detection watches it. with SS0 asserted the
+// controller drives the line itself so nothing is flagged, but with SS1
+// asserted the floating input still read low and the controller took
+// that for a second master. it then set MODE_FAIL and cleared SPI_EN,
+// so every SS1 transfer was aborted before it started (UG585 p.13).
+//
+// it stayed invisible because spi_setup below wrote the whole config
+// register and cleared bit 17 MODEFAIL_GEN_EN, which switches the
+// detection off. the silicon sets that bit at reset - the controller
+// reads 0x00020000 before any configuration. now it is kept set.
+//
+// FIX: xlconstant = 1 tied to SPI0_SS_I in the block design.
+
+// there are parts made with AI help (Claude), marked [AI] where it helped most
 // Source : LVGL porting docs, UG585 (CR p.562, ER p.583), ili9488 datasheet
 //
 // !! just copying the lvgl folder into src is NOT enough, cmake doesnt
@@ -28,29 +43,30 @@
 #define PIN_RST  55u  // 55 -> K13 -> header 22
 
 // spi registers, offsets from UG585
-#define R_CR   0x00   // config page 562 
-#define R_SR 0x04
-#define R_ER   0x14   // enable page 583
-#define R_TXD  0x1C
-#define R_RXD 0x20
+#define R_CR   0x00   // config page 562 - settings
+#define R_SR 0x04  //status
+#define R_ER   0x14   // enable page 583 - on/off. 14
+#define R_TXD  0x1C // outbox - bytes coming off, 28
+#define R_RXD 0x20  //inbox - bytes coming in, 32
 
-#define REG_RD(o)    (*(volatile uint32_t*)(SPI_BASE+(o)))
-#define REG_WR(o,v)  (*(volatile uint32_t*)(SPI_BASE+(o))=(v))
+#define REG_RD(o)    (*(volatile uint32_t*)(SPI_BASE+(o)))  //read
+#define REG_WR(o,v)  (*(volatile uint32_t*)(SPI_BASE+(o))=(v)) //write
 
 // CR bits needed
 #define CR_MASTER   (1u << 0)
 #define CR_DIV64  (0x5u << 3)   // ~166MHz/64 = ~2.6MHz
 #define CR_MANCS    (1u << 14)
-#define CR_CSBITS (0xFu << 10)
-#define CR_CS_ON    (0xEu << 10)  // ss0 low = selected 
-#define CR_CS_TOUCH (0xDu << 10)  // ss1 low = touch selected
-#define CR_CS_OFF (0xFu << 10)
+#define CR_CSBITS (0xFu << 10)  // all 4 positions
+#define CR_CS_ON    (0xEu << 10)  // ss0 low = selected for display, 0xE 1110
+#define CR_CS_TOUCH (0xDu << 10)  // ss1 low = touch selected, 0xD 1101
+#define CR_CS_OFF (0xFu << 10)  //nobody, 0xF 1111
 
 // M5: the touch chip is slower than the display, xpt2046 driver notes
 // say stay under 2.5Mbit
-#define CR_DIV256  (0x7u << 3)   // ~650kHz
-#define CR_DIVBITS (0x7u << 3)   // mask for the divider field
+#define CR_MODEFAIL_EN (1u << 17) // mode fail generation. the silicon sets this at reset, spi_setup used to clear it
+                                  // position 17 turns fault alarm ON
 
+#define SR_MODEFAIL (1u << 1)   // also clears SPI_EN, UG585 p.13
 #define SR_TXFULL   (1u << 3)
 #define SR_RXAVAIL  (1u << 4)
 
@@ -60,7 +76,7 @@ static XGpioPs gpio;
 
 static void cs_select(void)
 {
-    REG_WR(R_CR, (REG_RD(R_CR) & ~CR_CSBITS) | CR_CS_ON);
+    REG_WR(R_CR, (REG_RD(R_CR) & ~CR_CSBITS) | CR_CS_ON);  //display
 }
 static void cs_release(void) {
     REG_WR(R_CR, (REG_RD(R_CR) & ~CR_CSBITS) | CR_CS_OFF);
@@ -70,93 +86,139 @@ static void cs_release(void) {
 // M5 touch
 // touch sits on ss1, display on ss0. only one may be active at a time
 
-// deselect everything first (0xF), then slow the clock, then select ss1.
-// the deselect-first order comes from a zedboard forum thread, 
-// they say the controller otherwise doesnt take the new cs value.
-// [AI] the register sequence here was worked out with AI help from the
-// forum post and UG585, i had not used a second chip select before
-static void cs_touch_select(void)  //stop listen to display but listen to touch chip
+// select the touch chip. simple now - the clock switching and the extra
+// deselect step that used to be in here were attempts to work around the
+// MODE_FAIL problem, and none of them helped because the cause was in the
+// block design. one write is enough.
+static void cs_touch(void)
 {
-    uint32_t cr;
-
-    cr = REG_RD(R_CR);     // deselect everything to OxF
-    cr = (cr & ~CR_CSBITS) | CR_CS_OFF;
-    REG_WR(R_CR, cr);
-
-    REG_WR(R_ER, 0);                        // controller off while changing speed settings
-    cr = REG_RD(R_CR);                     // change speed setting to slower
-    cr = (cr & ~CR_DIVBITS) | CR_DIV256;
-    REG_WR(R_CR, cr);    // writes real hardware 
-    REG_WR(R_ER, 1);    // enable back address
-
-    cr = REG_RD(R_CR);    //read whole thing
-    cr = (cr & ~CR_CSBITS) | CR_CS_TOUCH; //   only 4 bits changed 
-    REG_WR(R_CR, cr);  //write it back
-    usleep(10);   // give the chip a moment after cs goes low
+    REG_WR(R_CR, (REG_RD(R_CR) & ~CR_CSBITS) | CR_CS_TOUCH);
 }
 
-// back to display clock and nobody selected
-static void cs_touch_release(void)
-{
-    uint32_t cr;
-
-    cr = REG_RD(R_CR);
-    cr = (cr & ~CR_CSBITS) | CR_CS_OFF;
-    REG_WR(R_CR, cr);
-
-    REG_WR(R_ER, 0);   //speed back up to display speed
-    cr = REG_RD(R_CR);
-    cr = (cr & ~CR_DIVBITS) | CR_DIV64;
-    REG_WR(R_CR, cr);
-    REG_WR(R_ER, 1);
-}
+#define TOUCH_GUARD  200000u
 
 // like spi_send but KEEPS the byte that comes back instead of throwing it away.
 // up to M4 the project only ever wrote, the touch is the first time a returning byte has to be correct.
-// the GUARD COUNTER is needed: without it the whole main loop hangs when nothing comes back
-// then the display freezes too. had that on the first try
-static uint8_t spi_transfer(uint8_t b)
+// the guard counter stops a dead slave hanging the whole lvgl loop.
+// the failed flag was added later: returning 0xFF alone is ambiguous
+// because 0xFF is also a valid byte, so the caller could not tell the
+// difference between an error and real data
+static uint8_t spi_transfer(uint8_t b, int *failed)
 {
     uint32_t guard = 0;
+    uint32_t sr;
+
+    *failed = 0;
+
     while (REG_RD(R_SR) & SR_TXFULL) {
-        if (++guard > 2000) return 0xFF;
+        if (++guard > TOUCH_GUARD) { *failed = 1; return 0xFF; }
     }
+
     REG_WR(R_TXD, b);
+
     guard = 0;
-    while (!(REG_RD(R_SR) & SR_RXAVAIL)) {
-        if (++guard > 2000) return 0xFF;
+    for (;;) {  // keep loop until one of these happens
+        sr = REG_RD(R_SR);  //read status number
+
+        if (sr & SR_RXAVAIL) return (uint8_t)REG_RD(R_RXD);  // is position 4 on?, if reply arrived , grab and stop
+
+        // this check only means anything because bit 17 is kept set now
+        if (sr & SR_MODEFAIL) { *failed = 1; return 0xFF; }
+
+        if (++guard > TOUCH_GUARD) { *failed = 1; return 0xFF; }
     }
-    return (uint8_t)REG_RD(R_RXD); // keep the byte with return
 }
 
 // command bytes from the xpt2046 datasheet. the chip on my display is an HR2046, a command compatible clone
-// [AI] which command byte does what, and the 2 dummy bytes + >>3
-// reassembly, came from the datasheet with AI help
+// [AI] which command byte does what, and the 2 dummy bytes + >>3 reassembly, 
+// came from the datasheet with AI help
 #define TOUCH_CMD_X  0xD0  //x axis
 #define TOUCH_CMD_Y  0x90  //y axis
 
-// send the command, then two zero bytes. i dont send those because i want to say anything,
-//  but because in spi data only moves while the clock runs.
-//  the answer is 12 bit spread over two bytes and shifted,
-// so combine them and then >>3
-static uint16_t touch_read_axis(uint8_t cmd)
+// raw values run 0..4095. an untouched panel reads at the very top because the two layers are not in contact
+#define TOUCH_MIN_VALID   200
+#define TOUCH_MAX_VALID   3900
+
+// calibration, measured by pressing the four corners and reading the
+// position off the screen:
+//   top-left  7,476    top-right   314,474
+//   bot-left 10,0      bot-right   297,10
+// X came out the right way round, Y is inverted and gets flipped below
+#define TOUCH_RAW_X_MIN   300
+#define TOUCH_RAW_X_MAX   3800
+#define TOUCH_RAW_Y_MIN   300
+#define TOUCH_RAW_Y_MAX   3800
+
+// one axis, one conversion. the chip select stays LOW for all three
+// bytes - command plus two dummy bytes, 24 clocks in total.
+// the old version read X and Y inside a single selection, 
+// but the datasheet (p.21) wants one selection per conversion
+static int touch_read_axis(uint8_t cmd, uint16_t *value)
 {
-    spi_transfer(cmd);
-    uint8_t hi = spi_transfer(0x00);
-    uint8_t lo = spi_transfer(0x00);
-    return ((hi << 8) | lo) >> 3;
+    uint8_t hi, lo;
+    int failed;
+
+    cs_touch();
+
+    (void)spi_transfer(cmd, &failed);
+    if (failed) { cs_release(); return -1; }
+
+    hi = spi_transfer(0x00, &failed);
+    if (failed) { cs_release(); return -1; }
+
+    lo = spi_transfer(0x00, &failed);
+    if (failed) { cs_release(); return -1; }
+
+    cs_release();
+
+    // 12 bit answer spread over two bytes and shifted left by 3
+    *value = (uint16_t)(((hi << 8) | lo) >> 3);
+    return 0;
 }
 
-// STATUS: always returns 8191, thats my timeout value (0xFFFF>>3) and not a measurement.
-//  the ILA shows SS1 never goes low, even though the register reads back correctly as 0x7439 (ss1 selected, manual cs).
-// SS0 for the display works normally at the same time.
-//  the touch works on a raspberry pi so its not the module
-static int touch_read_raw(uint16_t *x, uint16_t *y)
+// reads both axes and converts to pixels. returns 1 if it looks like a real press.
+//  three samples with the middle one taken, 
+// because single readings jump around a lot while the finger pressure changes
+static int touch_read(uint16_t *sx, uint16_t *sy)
 {
-    cs_touch_select();
-    *y = touch_read_axis(TOUCH_CMD_Y);
-    *x = touch_read_axis(TOUCH_CMD_X);
-    cs_touch_release();
+    uint16_t xs[3], ys[3];  // makes 3 slots
+    uint16_t rx, ry, t;
+    int i, j;
+    long v;
+
+    for (i = 0; i < 3; i++) {   // loop runs 3 times
+        if (touch_read_axis(TOUCH_CMD_Y, &ys[i]) != 0) return 0;
+        if (touch_read_axis(TOUCH_CMD_X, &xs[i]) != 0) return 0;
+    }
+
+    // small bubble sort on 3 values, then take the middle one
+    for (i = 0; i < 2; i++) {
+        for (j = 0; j < 2 - i; j++) {
+            if (xs[j] > xs[j+1]) { t = xs[j]; xs[j] = xs[j+1]; xs[j+1] = t; }
+            if (ys[j] > ys[j+1]) { t = ys[j]; ys[j] = ys[j+1]; ys[j+1] = t; }
+        }
+    }
+    rx = xs[1];
+    ry = ys[1];
+
+    // nothing pressed looks like the top of the range
+    if (rx < TOUCH_MIN_VALID || rx > TOUCH_MAX_VALID) return 0;
+    if (ry < TOUCH_MIN_VALID || ry > TOUCH_MAX_VALID) return 0;
+
+    v = ((long)rx - TOUCH_RAW_X_MIN) * LCD_W /
+        (TOUCH_RAW_X_MAX - TOUCH_RAW_X_MIN);
+    if (v < 0) v = 0;
+    if (v >= LCD_W) v = LCD_W - 1;
+    *sx = (uint16_t)v;
+
+    // Y is inverted on this panel: pressing the top gives a HIGH raw
+    // value and the bottom a low one, so subtract from the max
+    v = (long)(TOUCH_RAW_Y_MAX - ry) * LCD_H /
+        (TOUCH_RAW_Y_MAX - TOUCH_RAW_Y_MIN);
+    if (v < 0) v = 0;
+    if (v >= LCD_H) v = LCD_H - 1;
+    *sy = (uint16_t)v;
+
     return 1;
 }
 
@@ -190,7 +252,7 @@ static void write_data(uint8_t d) {
 static void spi_setup(void)
 {
     REG_WR(R_ER, 0);   // off while changing settings
-    REG_WR(R_CR, CR_MASTER | CR_MANCS | CR_DIV64 | CR_CS_OFF);
+    REG_WR(R_CR, CR_MASTER | CR_MANCS | CR_MODEFAIL_EN | CR_DIV64 | CR_CS_OFF);
     REG_WR(R_ER, 1);
 }
 
@@ -296,6 +358,10 @@ void pixel_out(uint16_t c)
 // counts every flushed stripe, just so i have something live on the screen
 static uint32_t frame_count = 0;
 
+// touch state, shared between the input callback and the display
+static uint16_t last_x = 0;
+static uint16_t last_y = 0;
+
 // flush callback. lvgl gives me a finished rectangle and i just push it through my window+pixel path from M3
 // px_map is rgb565 so 2 bytes per pixel
 // [AI] the callback signature and the lvgl calls (lv_display_flush_ready)
@@ -338,8 +404,34 @@ static uint32_t my_tick_cb(void)
     return tick_ms;
 }
 
-// [AI] partial render mode and how to size the buffer worked out with
-// AI help, the 40 lines are my own choice after looking at the ram
+// [AI] partial render mode and how to size the buffer worked out with AI help, 
+// the 40 lines are my own choice after looking at the ram lvgl input device callback.
+//  lvgl calls this on its own schedule and asks where the finger is. 
+// same pattern as the flush callback but in the other direction: 
+// there i hand lvgl pixels, here i hand it a position and a state.
+//  this replaces the putty printout the old version had.
+// [AI] the callback signature and lv_indev_create came from the lvgl docs with AI help, 
+// what happens inside is my own touch code
+static void my_touch_cb(lv_indev_t *indev, lv_indev_data_t *data)
+{
+    (void)indev;
+    uint16_t sx, sy;
+
+    if (touch_read(&sx, &sy)) {
+        last_x = sx;
+        last_y = sy;
+        data->point.x = (int32_t)sx;
+        data->point.y = (int32_t)sy;
+        data->state   = LV_INDEV_STATE_PRESSED;
+    } else {
+        // keep the last position, lvgl wants a sensible coordinate on
+        // release too so it knows where the release happened
+        data->point.x = (int32_t)last_x;
+        data->point.y = (int32_t)last_y;
+        data->state   = LV_INDEV_STATE_RELEASED;
+    }
+}
+
 // draw buffer, 40 lines. partial mode = lvgl renders in stripes that size.
 // bigger would be fewer flush calls but more ram, full screen
 // would be 320*480*2 = 300kb
@@ -349,15 +441,18 @@ static uint8_t draw_buf[LCD_W * BUF_LINES * 2];
 // main
 
 // LIVE VALUES on the screen 
-// idea: instead of just my name standing there i show numbers that
-// actually change while it runs. uptime and frame count show that the
-// loop is alive, the memory bar shows how much of lvgls pool is used.
+// idea: instead of just my name standing there i show numbers that actually change while it runs.
+//  uptime and frame count show that the loop is alive,
+//  the memory bar shows how much of lvgls pool is used.
 // the memory part is also useful for the performance analysis later
 
 static lv_obj_t *lbl_uptime;
 static lv_obj_t *lbl_frames;
 static lv_obj_t *lbl_mem;
 static lv_obj_t *bar_mem;
+static lv_obj_t *lbl_touch;
+static lv_obj_t *lbl_btn;
+static uint32_t  press_count = 0;
 
 // gets called by lvgl once a second, updates the labels
 // [AI] lv_timer_create and lv_mem_monitor usage with AI help,the uptime maths and which values to show are mine
@@ -379,10 +474,20 @@ static void update_values(lv_timer_t *t)
     lv_mem_monitor(&mon);
     lv_label_set_text_fmt(lbl_mem, "LVGL Mem  %d %%", (int)mon.used_pct);
     lv_bar_set_value(bar_mem, (int32_t)mon.used_pct, LV_ANIM_OFF);
+
+    // touch position, so the raw path is visible even without pressing
+    lv_label_set_text_fmt(lbl_touch, "Touch     %d, %d", (int)last_x, (int)last_y);
 }
 
-// counter so the touch values only print every couple of seconds
-static uint32_t touch_print = 0;
+// called by lvgl when the button is clicked. lvgl works out that a press landed on this widget,
+//  i only supply the coordinates
+// [AI] lv_event_cb signature with AI help
+static void btn_clicked(lv_event_t *e)
+{
+    (void)e;
+    press_count++;
+    lv_label_set_text_fmt(lbl_btn, "Pressed %d", (int)press_count);
+}
 
 // main
 
@@ -405,6 +510,13 @@ int main(void)
     lv_display_set_buffers(disp, draw_buf, NULL, sizeof(draw_buf),
                            LV_DISPLAY_RENDER_MODE_PARTIAL);
     xil_printf("lvgl display ready\r\n");
+
+    // register the touch as an lvgl input device. from here lvgl works out
+    // which widget a press landed on, i only report position and state
+    lv_indev_t *indev = lv_indev_create();
+    lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_read_cb(indev, my_touch_cb);
+    xil_printf("touch input device registered\r\n");
 
     // dark background, default is white and looks unfinished
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x101828), 0);
@@ -438,6 +550,23 @@ int main(void)
     lv_bar_set_range(bar_mem, 0, 100);
     lv_bar_set_value(bar_mem, 0, LV_ANIM_OFF);
 
+    // touch position readout
+    lbl_touch = lv_label_create(lv_screen_active());
+    lv_label_set_text(lbl_touch, "Touch     -, -");
+    lv_obj_set_style_text_color(lbl_touch, lv_color_hex(0x33CCFF), 0);
+    lv_obj_align(lbl_touch, LV_ALIGN_CENTER, 0, 45);
+
+    // a real button, to show the whole chain works: finger -> xpt2046 ->
+    // spi -> input callback -> lvgl hit testing -> event
+    lv_obj_t *btn = lv_btn_create(lv_screen_active());
+    lv_obj_set_size(btn, 200, 60);
+    lv_obj_align(btn, LV_ALIGN_CENTER, 0, 120);
+    lv_obj_add_event_cb(btn, btn_clicked, LV_EVENT_CLICKED, NULL);
+
+    lbl_btn = lv_label_create(btn);
+    lv_label_set_text(lbl_btn, "Press me");
+    lv_obj_center(lbl_btn);
+
     lv_obj_t *name = lv_label_create(lv_screen_active());
     lv_label_set_text(name, "Rafiq Danial Bin Rajman");
     lv_obj_set_style_text_color(name, lv_color_hex(0xFFFFFF), 0);
@@ -459,16 +588,6 @@ int main(void)
         lv_timer_handler();
         usleep(5000);
         tick_ms += 5;   // see above
-
-        // M5 test: raw touch values to putty, about once every 2 seconds.
-        // currently only the timeout value comes back
-        touch_print++;
-        if (touch_print >= 400) {
-            touch_print = 0;
-            uint16_t tx, ty;
-            touch_read_raw(&tx, &ty);
-            xil_printf("touch x=%d y=%d\r\n", tx, ty);
-        }
     }
     return 0;
 }
